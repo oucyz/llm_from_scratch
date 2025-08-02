@@ -13,20 +13,25 @@ def split_text_into_words(text: str) -> list[str]:
 
 def create_vocab(words: list) -> dict[str, int]:
     vocab = sorted(set(words))
+    vocab.extend(["<|endoftext|>", "<|unk|>"])
     return {word: idx for idx, word in enumerate(vocab)}
 
 
-class SimpleTokenizerV1:
+class SimpleTokenizerV2:
     def __init__(self, vocab: dict[str, int]):
         self.str_to_int = vocab
         self.int_to_str = {v: k for k, v in vocab.items()}
+
     def encode(self, text: str) -> list[int]:
         preprocess = self._split_text_into_words(text)
-        return [self.str_to_int[word] for word in preprocess if word in self.str_to_int]
+        return [
+            self.str_to_int[word] if word in self.str_to_int else self.str_to_int["<|unk|>"]
+            for word in preprocess
+        ]
 
     def decode(self, tokens: list[int]) -> str:
         text = " ".join(self.int_to_str[token] for token in tokens if token in self.int_to_str)
-        return re.sub(r'\s+([,.?!"()\'])', r'\1', text)
+        return re.sub(r'\s+([,.?!"()\'])', r"\1", text)
 
     def _split_text_into_words(self, text: str) -> list[str]:
         result = re.split(r'([,.;:?_!"()\']|--|\s)', text)
@@ -41,8 +46,9 @@ if __name__ == "__main__":
     vocab = create_vocab(words)
     print(f"Vocab size: {len(vocab)}")
     print(f"First 10 words in vocab: {list(vocab.items())[:10]}")
+    print(f"Last 5 words in vocab: {list(vocab.items())[-5:]}")
 
-    tokenizer = SimpleTokenizerV1(vocab)
+    tokenizer = SimpleTokenizerV2(vocab)
     encoded = tokenizer.encode(content)
     print(f"Encoded: {encoded[:10]}")
 
@@ -50,3 +56,10 @@ if __name__ == "__main__":
     print(f"Decoded: {decoded}")
 
     assert decoded == "I HAD always thought Jack Gisburn rather a cheap genius"
+
+    encoded = tokenizer.encode("this is a test, with punctuation! Does it work?")
+    print(f"Encoded: {encoded[:10]}")
+
+    decoded = tokenizer.decode(encoded[:10])
+    print(f"Decoded: {decoded}")
+    assert decoded == "this is a <|unk|>, with <|unk|>! <|unk|> it"
