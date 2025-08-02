@@ -1,5 +1,7 @@
 import re
 
+import tiktoken
+
 
 def read_text_file(file_path: str) -> str:
     with open(file_path, "r", encoding="utf-8") as file:
@@ -63,3 +65,22 @@ if __name__ == "__main__":
     decoded = tokenizer.decode(encoded[:10])
     print(f"Decoded: {decoded}")
     assert decoded == "this is a <|unk|>, with <|unk|>! <|unk|> it"
+
+    # Using tiktoken for comparison
+    tokenizer = tiktoken.get_encoding("gpt2")
+    encoded = tokenizer.encode("this is a test, with punctuation! Does it work?")
+    print(f"Encoded with tiktoken: {encoded[:10]}")
+
+    decoded = tokenizer.decode(encoded)
+    print(f"Decoded with tiktoken: {decoded}")
+    assert decoded == "this is a test, with punctuation! Does it work?"
+
+    # Testing unknown token handling
+    unknown_text = "Akwirw ier"
+    encoded_unknown = tokenizer.encode(unknown_text)
+    print(f"Encoded unknown text: {encoded_unknown}")
+    for token in encoded_unknown:
+        print(tokenizer.decode([token]), end=" ")
+    print()
+    decoded_unknown = tokenizer.decode(encoded_unknown)
+    print(f"Decoded unknown text: {decoded_unknown}")
