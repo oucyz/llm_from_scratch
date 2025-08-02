@@ -1,6 +1,8 @@
 import re
 
 import tiktoken
+import torch
+from torch.utils.data import DataLoader, Dataset
 
 
 def read_text_file(file_path: str) -> str:
@@ -38,6 +40,47 @@ class SimpleTokenizerV2:
     def _split_text_into_words(self, text: str) -> list[str]:
         result = re.split(r'([,.;:?_!"()\']|--|\s)', text)
         return [item.strip() for item in result if item.strip()]
+
+
+class GPTDatasetV1(Dataset):
+    def __init__(self, txt: str, tokenizer: tiktoken.Encoding, max_length: int, stride: int):
+        self.tokenizer = tokenizer
+        self.input_ids = []
+        self.target_ids = []
+        token_ids = tokenizer.encode(txt)
+
+        for i in range(0, len(token_ids) - max_length, stride):
+            input_chunk = token_ids[i : i + max_length]
+            target_chunk = token_ids[i + 1 : i + max_length + 1]
+            self.input_ids.append(torch.tensor(input_chunk))
+            self.target_ids.append(torch.tensor(target_chunk))
+
+    def __len__(self):
+        return len(self.input_ids)
+
+    def __getitem__(self, idx):
+        return self.input_ids[idx], self.target_ids[idx]
+
+
+def create_dataloader_v1(
+    txt: str,
+    batch_size: int = 4,
+    max_length: int = 256,
+    stride: int = 128,
+    shuffle: bool = True,
+    drop_last: bool = True,
+    num_workers: int = 0,
+) -> DataLoader:
+    tokenizer = tiktoken.get_encoding("gpt2")
+    dataset = GPTDatasetV1(txt, tokenizer, max_length, stride)
+    dataloader = DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        drop_last=drop_last,
+        num_workers=num_workers,
+    )
+    return dataloader
 
 
 if __name__ == "__main__":
@@ -84,3 +127,28 @@ if __name__ == "__main__":
     print()
     decoded_unknown = tokenizer.decode(encoded_unknown)
     print(f"Decoded unknown text: {decoded_unknown}")
+
+    # Create DataLoader
+    dataloader = create_dataloader_v1(content, batch_size=1, max_length=4, stride=1, shuffle=False)
+    for idx, batch in enumerate(dataloader):
+        if idx >= 2:
+            break
+        input_ids, target_ids = batch
+        print(f"Input IDs: {input_ids}")
+        print(f"Target IDs: {target_ids}")
+
+    dataloader = create_dataloader_v1(content, batch_size=1, max_length=2, stride=2, shuffle=False)
+    for idx, batch in enumerate(dataloader):
+        if idx >= 2:
+            break
+        input_ids, target_ids = batch
+        print(f"Input IDs: {input_ids}")
+        print(f"Target IDs: {target_ids}")
+
+    dataloader = create_dataloader_v1(content, batch_size=8, max_length=4, stride=4, shuffle=False)
+    for idx, batch in enumerate(dataloader):
+        if idx >= 2:
+            break
+        input_ids, target_ids = batch
+        print(f"Input IDs: {input_ids}")
+        print(f"Target IDs: {target_ids}")
