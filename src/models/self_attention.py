@@ -25,6 +25,37 @@ class SelfAttentionV3(nn.Module):
         return context_vec
 
 
+class CausalAttention(nn.Module):
+    def __init__(
+        self, d_in: int, d_out: int, context_length: int, dropout: float, bias: bool = False
+    ):
+        super().__init__()
+        self.d_out = d_out
+        self.W_query = nn.Linear(d_in, d_out, bias=bias)
+        self.W_key = nn.Linear(d_in, d_out, bias=bias)
+        self.W_value = nn.Linear(d_in, d_out, bias=bias)
+        self.dropout = nn.Dropout(dropout)
+        self.register_buffer(
+            "mask", torch.triu(torch.ones(context_length, context_length), diagonal=1)
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        _batch, num_tokens, _d_in = x.shape
+        queries = self.W_query(x)
+        keys = self.W_key(x)
+
+        attention_scores = queries @ keys.transpose(1, 2)
+        attention_scores.masked_fill_(self.mask.bool()[:num_tokens, :num_tokens], -torch.inf)
+        attention_weights = torch.softmax(attention_scores / self.d_out**0.5, dim=-1)
+
+        attention_weights = self.dropout(attention_weights)
+
+        values = self.W_value(x)
+        context_vec = attention_weights @ values
+
+        return context_vec
+
+
 if __name__ == "__main__":
     n = 6
     d_in = 8
@@ -34,4 +65,12 @@ if __name__ == "__main__":
 
     self_attention = SelfAttentionV3(d_in=d_in, d_out=d_out, bias=False)
     output = self_attention(embedding)
+    print(output)
+
+    x = torch.stack([embedding, embedding], dim=0)
+    print(x.shape)  # torch.Size([2, 6, 8])
+    causal_attention = CausalAttention(
+        d_in=d_in, d_out=d_out, context_length=n, dropout=0.5, bias=False
+    )
+    output = causal_attention(x)
     print(output)
