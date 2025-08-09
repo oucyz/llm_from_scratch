@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
-from self_attention import CausalAttention
+
+from .self_attention import CausalAttention
 
 
 class MultiHeadAttentionWrapper(nn.Module):
@@ -11,11 +12,14 @@ class MultiHeadAttentionWrapper(nn.Module):
         context_length: int,
         dropout: float,
         num_heads: int,
-        bias: bool = False,
+        qkv_bias: bool = False,
     ):
         super().__init__()
         self.heads = nn.ModuleList(
-            [CausalAttention(d_in, d_out, context_length, dropout, bias) for _ in range(num_heads)]
+            [
+                CausalAttention(d_in, d_out, context_length, dropout, qkv_bias)
+                for _ in range(num_heads)
+            ]
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -30,7 +34,7 @@ class MultiHeadAttention(nn.Module):
         context_length: int,
         dropout: float,
         num_heads: int,
-        bias: bool = False,
+        qkv_bias: bool = False,
     ):
         super().__init__()
         assert d_out % num_heads == 0, "d_out must be divisible by num_heads"
@@ -39,9 +43,9 @@ class MultiHeadAttention(nn.Module):
         self.num_heads = num_heads
         self.head_dim = d_out // num_heads
 
-        self.W_query = nn.Linear(d_in, d_out, bias=bias)
-        self.W_key = nn.Linear(d_in, d_out, bias=bias)
-        self.W_value = nn.Linear(d_in, d_out, bias=bias)
+        self.W_query = nn.Linear(d_in, d_out, bias=qkv_bias)
+        self.W_key = nn.Linear(d_in, d_out, bias=qkv_bias)
+        self.W_value = nn.Linear(d_in, d_out, bias=qkv_bias)
 
         self.out_proj = nn.Linear(d_out, d_out)
         self.dropout = nn.Dropout(dropout)
