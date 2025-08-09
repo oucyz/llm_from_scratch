@@ -1,5 +1,8 @@
 import torch
 
+from src.config.config import GPT_CONFIG_124M
+from src.models.dummy_gpt_model import GPTModel
+
 
 def generate_text_simple(model, idx, max_new_tokens: int, context_size: int):
     """貪欲法によりトークンを生成します。
@@ -30,5 +33,29 @@ def generate_text_simple(model, idx, max_new_tokens: int, context_size: int):
             logits = model(idx_cond)  # Batch x Context x Vocab
         probas = torch.softmax(logits[:, -1, :], dim=-1)  # B x V
         next_token = torch.argmax(probas, dim=-1, keepdim=True)  # B x 1
-        idx = torch.cat((idx, next_token), dim=-1, keepdim=True)
+        idx = torch.cat((idx, next_token), dim=1)
     return idx
+
+
+if __name__ == "__main__":
+    import tiktoken
+
+    text = [
+        "Once upon a time, there was a brave knight who",
+        "昔むかしあるところに、勇敢な騎士がいました。"
+    ]
+
+    tokenizer = tiktoken.get_encoding("gpt2")
+    encoded = tokenizer.encode(text[1])
+    encoded = torch.tensor(encoded).unsqueeze(0)  # Add batch dimension
+    print(encoded)
+
+    model = GPTModel(GPT_CONFIG_124M).eval()
+    output = generate_text_simple(
+        model=model,
+        idx=encoded,
+        max_new_tokens=6,
+        context_size=int(GPT_CONFIG_124M["context_length"]),
+    )
+    print("output:", output)
+    print("output (decoded):", tokenizer.decode(output[0].tolist()))
