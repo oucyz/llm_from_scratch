@@ -7,6 +7,14 @@ class GELU(nn.Module):
         super().__init__()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """近似版GELU活性化関数を適用します。
+
+        Args:
+            x: 入力テンソル。
+
+        Returns:
+            GELU を適用したテンソル。
+        """
         return (
             0.5
             * x

@@ -8,6 +8,11 @@ from .multi_head_attention import MultiHeadAttention
 
 class DummyGPTModel(nn.Module):
     def __init__(self, cfg: dict[str, int | bool]):
+        """最小構成のGPT風モデル。
+
+        Args:
+            cfg: 語彙サイズ、埋め込み次元、コンテキスト長、層数、ドロップ率などの設定。
+        """
         super().__init__()
         self.tok_emb = nn.Embedding(cfg["vocab_size"], cfg["emb_dim"])
         self.pos_emb = nn.Embedding(cfg["context_length"], cfg["emb_dim"])
@@ -21,6 +26,14 @@ class DummyGPTModel(nn.Module):
         self.out_head = nn.Linear(cfg["emb_dim"], cfg["vocab_size"], bias=False)
 
     def forward(self, in_idx: torch.Tensor) -> torch.Tensor:
+        """トークンID列を受け取りロジットを返します。
+
+        Args:
+            in_idx: 入力インデックス（B, T）。
+
+        Returns:
+            ロジット（B, T, V）。
+        """
         _batch_size, seq_len = in_idx.shape
         tok_embeds = self.tok_emb(in_idx)
         pos_embeds = self.pos_emb(torch.arange(seq_len, device=in_idx.device))
@@ -34,17 +47,21 @@ class DummyGPTModel(nn.Module):
 
 class DummyTransformerBlock(nn.Module):
     def __init__(self, cfg: dict[str, int | bool]):
+        """ダミーのTransformerブロック（恒等変換）。"""
         super().__init__()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """入力をそのまま返します。"""
         return x
 
 
 class DummyLayerNorm(nn.Module):
     def __init__(self, normalized_shape: int, eps: float = 1e-5):
+        """ダミーのLayerNorm。内部に `layer_norm` が実装されている前提。"""
         super().__init__()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """`self.layer_norm` を呼び出して正規化したテンソルを返します。"""
         return self.layer_norm(x)
 
 
@@ -56,6 +73,7 @@ class LayerNorm(nn.Module):
         self.shift = nn.Parameter(torch.zeros(emb_dim))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """最後の次元で平均・分散を計算し、正規化して学習可能なスケール・シフトを適用します。"""
         mean = x.mean(dim=-1, keepdim=True)
         var = x.var(dim=-1, keepdim=True, unbiased=False)
         norm_x = (x - mean) / torch.sqrt(var + self.eps)
@@ -64,6 +82,7 @@ class LayerNorm(nn.Module):
 
 class FeedForward(nn.Module):
     def __init__(self, cfg: dict):
+        """Transformer用の位置ごとの前向きネットワーク。GELUを中間に挟みます。"""
         super().__init__()
         self.layers = nn.Sequential(
             nn.Linear(cfg["emb_dim"], 4 * cfg["emb_dim"]),
@@ -72,11 +91,13 @@ class FeedForward(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """前向きに層を適用して出力を返します。"""
         return self.layers(x)
 
 
 class ExampleDeepNeuralNetwork(nn.Module):
     def __init__(self, layer_sizes: list[int], use_shortcut: bool):
+        """簡易DNN。順次Linear+GELUを適用し、`use_shortcut` は現状未使用です。"""
         super().__init__()
         self.use_shortcut = use_shortcut
         self.layers = nn.ModuleList(
@@ -85,6 +106,7 @@ class ExampleDeepNeuralNetwork(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """レイヤを逐次適用した結果を返します。"""
         for layer in self.layers:
             x = layer(x)
         return x
@@ -92,6 +114,7 @@ class ExampleDeepNeuralNetwork(nn.Module):
 
 class TransformerBlock(nn.Module):
     def __init__(self, cfg: dict):
+        """Transformerブロック（MHA→残差、FF→残差）。"""
         super().__init__()
         self.att = MultiHeadAttention(
             d_in=cfg["emb_dim"],
@@ -107,6 +130,7 @@ class TransformerBlock(nn.Module):
         self.drop_shortcut = nn.Dropout(cfg["drop_rate"])
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Transformerブロックの前方計算。"""
         shortcut = x
         x = self.norm1(x)
         x = self.att(x)
@@ -124,6 +148,7 @@ class TransformerBlock(nn.Module):
 
 class GPTModel(nn.Module):
     def __init__(self, cfg: dict):
+        """GPT風モデル本体。埋め込み、位置埋め込み、ブロック群、最終正規化と出力ヘッドを持つ。"""
         super().__init__()
         self.tok_emb = nn.Embedding(cfg["vocab_size"], cfg["emb_dim"])
         self.pos_emb = nn.Embedding(cfg["context_length"], cfg["emb_dim"])
@@ -135,6 +160,7 @@ class GPTModel(nn.Module):
         self.out_head = nn.Linear(cfg["emb_dim"], cfg["vocab_size"], bias=False)
 
     def forward(self, in_idx: torch.Tensor) -> torch.Tensor:
+        """トークンID列を入力し、語彙サイズに対するロジットを返します（B, T, V）。"""
         _batch_size, seq_len = in_idx.shape
         tok_embeds = self.tok_emb(in_idx)
         pos_embeds = self.pos_emb(torch.arange(seq_len, device=in_idx.device))

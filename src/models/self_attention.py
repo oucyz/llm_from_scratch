@@ -10,6 +10,14 @@ class SelfAttentionV3(nn.Module):
         self.W_value = nn.Linear(d_in, d_out, bias=bias)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """自己注意を計算します（シンプル版）。
+
+        引数:
+            x: 入力（系列長 x d_in）。
+
+        戻り値:
+            文脈ベクトル（系列長 x d_out）。
+        """
         query = self.W_query(x)  # 系列長 x d_out
         key = self.W_key(x)  # 系列長 x d_out
         attention_scores = query @ key.T  # 系列長 x 系列長
@@ -40,6 +48,14 @@ class CausalAttention(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """因果マスク付き自己注意を計算します。
+
+        引数:
+            x: 入力テンソル（B, T, d_in）。
+
+        戻り値:
+            文脈ベクトル（B, T, d_out）。
+        """
         _batch, num_tokens, _d_in = x.shape
         queries = self.W_query(x)
         keys = self.W_key(x)

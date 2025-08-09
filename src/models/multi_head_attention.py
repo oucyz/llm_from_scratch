@@ -14,6 +14,16 @@ class MultiHeadAttentionWrapper(nn.Module):
         num_heads: int,
         qkv_bias: bool = False,
     ):
+        """複数の因果自己注意ヘッドを並列に適用するラッパ。
+
+        引数:
+            d_in: 入力埋め込み次元。
+            d_out: 各ヘッド出力の総和次元。
+            context_length: コンテキスト長（マスク作成に使用）。
+            dropout: ドロップアウト率。
+            num_heads: ヘッド数。
+            qkv_bias: Q/K/V の線形層にバイアスを付与するか。
+        """
         super().__init__()
         self.heads = nn.ModuleList(
             [
@@ -23,6 +33,7 @@ class MultiHeadAttentionWrapper(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """各ヘッドの出力を最後の次元で連結して返します。"""
         return torch.cat([head(x) for head in self.heads], dim=-1)
 
 
@@ -36,6 +47,16 @@ class MultiHeadAttention(nn.Module):
         num_heads: int,
         qkv_bias: bool = False,
     ):
+        """GPT-2スタイルのマルチヘッド注意。
+
+        引数:
+            d_in: 入力埋め込み次元。
+            d_out: 出力埋め込み次元（ヘッド数で割り切れること）。
+            context_length: コンテキスト長（因果マスクのサイズ）。
+            dropout: ドロップアウト率。
+            num_heads: ヘッド数。
+            qkv_bias: Q/K/V にバイアスを与えるか。
+        """
         super().__init__()
         assert d_out % num_heads == 0, "d_out must be divisible by num_heads"
 
@@ -54,6 +75,7 @@ class MultiHeadAttention(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """前方計算を行い、コンテキストに基づく表現を返します。"""
         batch, num_tokens, _d_in = x.shape
 
         keys = self.W_key(x).view(batch, num_tokens, self.num_heads, self.head_dim).transpose(1, 2)

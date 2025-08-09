@@ -6,16 +6,49 @@ from torch.utils.data import DataLoader, Dataset
 
 
 def read_text_file(file_path: str) -> str:
+    """UTF-8でテキストファイルを読み込み、文字列を返します。
+
+    Args:
+        file_path: 読み込むファイルへのパス。
+
+    Returns:
+        ファイルの中身の文字列。
+    """
     with open(file_path, "r", encoding="utf-8") as file:
         return file.read()
 
 
 def split_text_into_words(text: str) -> list[str]:
+    """句読点や空白を境界としてテキストをトークンに分割します。
+
+    正規表現で ``[,.;:?_!"()']``、ダッシュ ``--``、空白を分割対象にし、
+    余分な空白を取り除いた非空要素のみを返します。
+
+    Args:
+        text: 入力テキスト。
+
+    Returns:
+        分割後のトークンのリスト。
+    """
     result = re.split(r'([,.;:?_!"()\']|--|\s)', text)
     return [item.strip() for item in result if item.strip()]
 
 
 def create_vocab(words: list) -> dict[str, int]:
+    """トークン列から語彙辞書を作成します。
+
+    ユニークな語彙をソートしてIDを割り当て、特殊トークン
+    ``<|endoftext|>`` と ``<|unk|>`` を末尾に追加します。
+
+    Args:
+        words: トークンのリスト。
+
+    Returns:
+        単語をキー、整数IDを値とする辞書。
+
+    Notes:
+        ソートにより語彙IDの順序は元の出現順とは異なります。
+    """
     vocab = sorted(set(words))
     vocab.extend(["<|endoftext|>", "<|unk|>"])
     return {word: idx for idx, word in enumerate(vocab)}
@@ -23,10 +56,25 @@ def create_vocab(words: list) -> dict[str, int]:
 
 class SimpleTokenizerV2:
     def __init__(self, vocab: dict[str, int]):
+        """トークナイザを初期化します。
+
+        Args:
+            vocab: 単語→ID の語彙辞書。
+        """
         self.str_to_int = vocab
         self.int_to_str = {v: k for k, v in vocab.items()}
 
     def encode(self, text: str) -> list[int]:
+        """テキストをトークンID列へ変換します。
+
+        未知語は ``<|unk|>`` のIDにフォールバックします。
+
+        Args:
+            text: 入力テキスト。
+
+        Returns:
+            トークンIDのリスト。
+        """
         preprocess = self._split_text_into_words(text)
         return [
             self.str_to_int[word] if word in self.str_to_int else self.str_to_int["<|unk|>"]
@@ -34,16 +82,40 @@ class SimpleTokenizerV2:
         ]
 
     def decode(self, tokens: list[int]) -> str:
+        """トークンID列をテキストに復元します。
+
+        ID→単語のマップを辿って空白区切りで連結し、句読点の前の
+        余分な空白を正規表現で取り除きます。
+
+        Args:
+            tokens: トークンIDのリスト。
+
+        Returns:
+            復元されたテキスト。
+        """
         text = " ".join(self.int_to_str[token] for token in tokens if token in self.int_to_str)
         return re.sub(r'\s+([,.?!"()\'])', r"\1", text)
 
     def _split_text_into_words(self, text: str) -> list[str]:
+        """内部用: テキストを ``split_text_into_words`` と同様の規則で分割します。"""
         result = re.split(r'([,.;:?_!"()\']|--|\s)', text)
         return [item.strip() for item in result if item.strip()]
 
 
 class GPTDatasetV1(Dataset):
     def __init__(self, txt: str, tokenizer: tiktoken.Encoding, max_length: int, stride: int):
+        """GPT系の次トークン予測用データセットを作成します。
+
+        入力テキストを ``tokenizer`` でID列に変換し、
+        長さ ``max_length`` のスライディングウィンドウ（幅 ``stride``）で
+        入力（x）と次トークンを1ステップ先にずらしたターゲット（y）を作ります。
+
+        Args:
+            txt: 元テキスト。
+            tokenizer: `tiktoken` のエンコーディング。
+            max_length: 入力系列長（コンテキスト長）。
+            stride: ウィンドウを進めるステップ幅。
+        """
         self.tokenizer = tokenizer
         self.input_ids = []
         self.target_ids = []
@@ -56,9 +128,11 @@ class GPTDatasetV1(Dataset):
             self.target_ids.append(torch.tensor(target_chunk))
 
     def __len__(self):
+        """サンプル数を返します。"""
         return len(self.input_ids)
 
     def __getitem__(self, idx):
+        """指定インデックスの (input_ids, target_ids) を返します。"""
         return self.input_ids[idx], self.target_ids[idx]
 
 
@@ -71,6 +145,20 @@ def create_dataloader_v1(
     drop_last: bool = True,
     num_workers: int = 0,
 ) -> DataLoader:
+    """テキストから DataLoader を作成します。
+
+    Args:
+        txt: 元テキスト。
+        batch_size: バッチサイズ。
+        max_length: 入力系列長（コンテキスト長）。
+        stride: スライディングウィンドウのステップ幅。
+        shuffle: シャッフルの有無。
+        drop_last: 端数バッチを捨てるかどうか。
+        num_workers: データローダのワーカ数。
+
+    Returns:
+        PyTorch の DataLoader インスタンス。
+    """
     tokenizer = tiktoken.get_encoding("gpt2")
     dataset = GPTDatasetV1(txt, tokenizer, max_length, stride)
     dataloader = DataLoader(
