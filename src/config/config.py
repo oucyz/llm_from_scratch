@@ -30,3 +30,10 @@ MODEL_CONFIGS = {
         "num_heads": 25,
     },
 }
+
+BASE_CONFIG = {
+    "vocab_size": 50257,
+    "context_length": 1024,
+    "drop_rate": 0.0,
+    "qkv_bias": True,
+}
