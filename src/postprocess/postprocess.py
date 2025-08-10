@@ -1,9 +1,3 @@
-"""テキスト生成のポストプロセス/デコード関数群。
-
-貪欲法および温度・top-kサンプリングを用いた生成ループを提供します。
-ロジックはそのままに、型アノテーションと日本語Googleスタイルdocstringを付与しています。
-"""
-
 from typing import Optional
 
 import torch
@@ -85,7 +79,7 @@ def generate(
             probs = torch.softmax(logits, dim=-1)
             idx_next = torch.multinomial(probs, num_samples=1)
         else:
-            idx_next = torch.argmax(probs, dim=-1, keepdim=True)
+            idx_next = torch.argmax(logits, dim=-1, keepdim=True)
 
         if idx_next == eos_id:
             break
