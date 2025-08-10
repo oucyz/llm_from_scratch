@@ -47,3 +47,6 @@ $ make coverage
 # coverage の可視化
 $ make vis_coverage
 ```
+
+## Reference
+- https://github.com/rasbt/LLMs-from-scratch/tree/main
