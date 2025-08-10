@@ -1,14 +1,14 @@
-# uv-template
+# LLM from scratch
 
 <div align="center">
 
 [![Versions](https://img.shields.io/badge/python-3.12%20|%203.13%20-green.svg)](https://github.com/oucyz/uv-template)
 
-[![Action status](https://github.com/oucyz/uv-template/actions/workflows/CI.yml/badge.svg)](https://github.com/oucyz/uv-template/actions/workflows/CI.yml)
+[![Action status](https://github.com/oucyz/uv-template/actions/workflows/CI.yml/badge.svg)](https://github.com/oucyz/llm_from_scratch/actions/workflows/CI.yml)
 
 </div>
 
-これは uv を用いた Python プロジェクトのテンプレートリポジトリです.
+これは LLM をスクラッチで実装するリポジトリです.
 
 
 ## 開発環境の構築
