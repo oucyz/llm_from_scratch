@@ -85,3 +85,6 @@ branch = true
 show_missing = true
 fail_under = 100
 
+
+[tool.uv]
+constraint-dependencies = ["certifi>=2026.10.19"]
